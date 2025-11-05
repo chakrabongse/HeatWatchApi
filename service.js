@@ -5,7 +5,8 @@ const mysql = require('mysql2'); // ใช้ mysql2 ดีกว่าเพร
 const port = 3000;
 
 app.use(cors());
-
+app.use(express.json());       // สำหรับอ่าน JSON body
+app.use(express.urlencoded({ extended: true })); // สำหรับอ่าน form data
 // --- ตั้งค่าการเชื่อมต่อฐานข้อมูล ---
 const db = mysql.createConnection({
   host: 'sql12.freesqldatabase.com',
@@ -26,6 +27,25 @@ db.connect((err) => {
 // --- route หลัก ---
 app.get('/', (req, res) => {
   res.send('🌡️ Temperature Service is running with Database!');
+});
+
+app.post('/add', (req, res) => {
+  const { temperature } = req.body;
+  console.log(req.body);
+
+  if (temperature === undefined) {
+    return res.status(400).json({ error: 'Missing parameter: temperature' });
+  }
+
+  const sql = 'INSERT INTO temperature_log (temperature, recorded_at) VALUES (?, NOW())';
+  db.query(sql, [temperature], (err, result) => {
+    if (err) {
+      console.error('❌ Insert error:', err);
+      return res.status(500).json({ error: 'Database insert error' });
+    }
+    console.log(`✅ New temperature added: ${temperature}°C`);
+    res.json({ success: true, message: 'Data saved successfully' });
+  });
 });
 
 // --- route สำหรับดึงอุณหภูมิล่าสุดจากฐานข้อมูล ---
