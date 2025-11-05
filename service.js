@@ -29,34 +29,22 @@ app.get('/', (req, res) => {
   res.send('🌡️ Temperature Service is running with Database!');
 });
 
+const moment = require('moment-timezone'); // แนะนำวางบนสุดของไฟล์
+
 app.post('/add', (req, res) => {
   const { temperature } = req.body;
-  console.log(req.body);
 
   if (temperature === undefined) {
     return res.status(400).json({ error: 'Missing parameter: temperature' });
   }
 
-  const now = new Date();
-  const thailandTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+  // เวลาประเทศไทยปัจจุบัน
+  const thailandTime = moment().tz('Asia/Bangkok').format('YYYY-MM-DD HH:mm:ss');
+  console.log('Bangkok Time:', thailandTime);
 
-  const yyyy = thailandTime.getFullYear();
-  const mm = String(thailandTime.getMonth() + 1).padStart(2, '0');
-  const dd = String(thailandTime.getDate()).padStart(2, '0');
-  const hh = String(thailandTime.getHours()).padStart(2, '0');
-  const min = String(thailandTime.getMinutes()).padStart(2, '0');
-  const ss = String(thailandTime.getSeconds()).padStart(2, '0');
+  const sql = `INSERT INTO temperature_log (temperature, recorded_at) VALUES (?, ?)`;
 
-  const formattedTime = `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
-
-  console.log('✅ Bangkok Time:', formattedTime);
-
-  const sql = `
-    INSERT INTO temperature_log (temperature, recorded_at)
-    VALUES (?, ?)
-  `;
-
-  db.query(sql, [temperature, formattedTime], (err, result) => {
+  db.query(sql, [temperature, thailandTime], (err, result) => {
     if (err) {
       console.error('❌ Insert error:', err);
       return res.status(500).json({ error: 'Database insert error' });
