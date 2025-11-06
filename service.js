@@ -37,13 +37,32 @@ app.post('/add', (req, res) => {
     return res.status(400).json({ error: 'Missing parameter: temperature' });
   }
 
-  const sql = 'INSERT INTO temperature_log (temperature, recorded_at) VALUES (?, NOW())';
-  db.query(sql, [temperature], (err, result) => {
+  const now = new Date();
+  const thailandTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+
+  const yyyy = thailandTime.getFullYear();
+  const mm = String(thailandTime.getMonth() + 1).padStart(2, '0');
+  const dd = String(thailandTime.getDate()).padStart(2, '0');
+  const hh = String(thailandTime.getHours()).padStart(2, '0');
+  const min = String(thailandTime.getMinutes()).padStart(2, '0');
+  const ss = String(thailandTime.getSeconds()).padStart(2, '0');
+
+  const formattedTime = `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
+
+  console.log('✅ Bangkok Time:', formattedTime);
+
+  const sql = `
+    INSERT INTO temperature_log (temperature, recorded_at)
+    VALUES (?, ?)
+  `;
+
+  db.query(sql, [temperature, formattedTime], (err, result) => {
     if (err) {
       console.error('❌ Insert error:', err);
       return res.status(500).json({ error: 'Database insert error' });
     }
-    console.log(`✅ New temperature added: ${temperature}°C`);
+
+    console.log(`✅ New temperature added: ${temperature}°C (Recorded in Bangkok Time)`);
     res.json({ success: true, message: 'Data saved successfully' });
   });
 });
