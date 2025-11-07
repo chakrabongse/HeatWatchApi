@@ -61,7 +61,7 @@ app.post('/add', (req, res) => {
 
 // --- route สำหรับดึงอุณหภูมิล่าสุดจากฐานข้อมูล ---
 app.get('/tmp', (req, res) => {
-  const sql = 'SELECT temperature, recorded_at FROM temperature_log ORDER BY recorded_at DESC LIMIT 1';
+  const sql = 'SELECT temperature, humidity, recorded_at FROM temperature_log ORDER BY recorded_at DESC LIMIT 1';
   db.query(sql, (err, results) => {
     if (err) {
       console.error('❌ Error querying database:', err);
