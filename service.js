@@ -30,30 +30,34 @@ app.get('/', (req, res) => {
 });
 
 const moment = require('moment-timezone'); // แนะนำวางบนสุดของไฟล์
-
 app.post('/add', (req, res) => {
-  const { temperature } = req.body;
+  const { temperature, humidity } = req.body;
 
+  // ตรวจสอบว่ามีค่า temperature และ humidity
   if (temperature === undefined) {
     return res.status(400).json({ error: 'Missing parameter: temperature' });
+  }
+  if (humidity === undefined) {
+    return res.status(400).json({ error: 'Missing parameter: humidity' });
   }
 
   // เวลาประเทศไทยปัจจุบัน
   const thailandTime = moment().tz('Asia/Bangkok').format('YYYY-MM-DD HH:mm:ss');
   console.log('Bangkok Time:', thailandTime);
 
-  const sql = `INSERT INTO temperature_log (temperature, recorded_at) VALUES (?, ?)`;
+  const sql = `INSERT INTO temperature_log (temperature, humidity, recorded_at) VALUES (?, ?, ?)`;
 
-  db.query(sql, [temperature, thailandTime], (err, result) => {
+  db.query(sql, [temperature, humidity, thailandTime], (err, result) => {
     if (err) {
       console.error('❌ Insert error:', err);
       return res.status(500).json({ error: 'Database insert error' });
     }
 
-    console.log(`✅ New temperature added: ${temperature}°C (Recorded in Bangkok Time)`);
+    console.log(`✅ New temperature added: ${temperature}°C, Humidity: ${humidity}% (Recorded in Bangkok Time)`);
     res.json({ success: true, message: 'Data saved successfully' });
   });
 });
+
 
 // --- route สำหรับดึงอุณหภูมิล่าสุดจากฐานข้อมูล ---
 app.get('/tmp', (req, res) => {
