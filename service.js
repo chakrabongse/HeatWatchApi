@@ -84,7 +84,7 @@ app.get('/tmp', (req, res) => {
 
 // --- ดึงประวัติอุณหภูมิ 20 รายการล่าสุด ---
 app.get('/history', (req, res) => {
-  const sql = 'SELECT temperature, recorded_at FROM temperature_log ORDER BY recorded_at DESC LIMIT 5';
+  const sql = 'SELECT temperature,humidity, recorded_at FROM temperature_log ORDER BY recorded_at DESC LIMIT 5';
   db.query(sql, (err, results) => {
     if (err) {
       console.error('❌ Error querying database:', err);
