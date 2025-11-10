@@ -45,7 +45,7 @@ app.post('/add', (req, res) => {
   const thailandTime = moment().tz('Asia/Bangkok').format('YYYY-MM-DD HH:mm:ss');
   console.log('Bangkok Time:', thailandTime);
 
-  const sql = `INSERT INTO temperature_log (temperature, humidity, mac_id, recorded_at) VALUES (?, ?, ?)`;
+  const sql = `INSERT INTO temperature_log (temperature, humidity, mac_id, recorded_at) VALUES (?, ?, ?, ?)`;
 
   db.query(sql, [temperature, humidity, mac_id, thailandTime], (err, result) => {
     if (err) {
