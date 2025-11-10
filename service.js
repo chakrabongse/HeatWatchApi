@@ -72,10 +72,11 @@ app.get('/tmp', (req, res) => {
       return res.status(404).json({ message: 'No temperature data found' });
     }
 
-    const { temperature,humidity, recorded_at } = results[0];
+    const { temperature,humidity, mac_id, recorded_at } = results[0];
     res.json({
       temperature,
       humidity,
+      mac_id,
       recorded_at,
       status: getStatus(temperature)
     });
