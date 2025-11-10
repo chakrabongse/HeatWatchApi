@@ -45,9 +45,9 @@ app.post('/add', (req, res) => {
   const thailandTime = moment().tz('Asia/Bangkok').format('YYYY-MM-DD HH:mm:ss');
   console.log('Bangkok Time:', thailandTime);
 
-  const sql = `INSERT INTO temperature_log (temperature, humidity, mac_id, recorded_at) VALUES (?, ?, ?, ?)`;
+  const sql = `INSERT INTO temperature_log (temperature, humidity, heat_index, mac_id, recorded_at) VALUES (?, ?, ?, ?, ?)`;
 
-  db.query(sql, [temperature, humidity, mac_id, thailandTime], (err, result) => {
+  db.query(sql, [temperature, humidity, heat_index, mac_id, thailandTime], (err, result) => {
     if (err) {
       console.error('❌ Insert error:', err);
       return res.status(500).json({ error: 'Database insert error' });
@@ -61,7 +61,7 @@ app.post('/add', (req, res) => {
 
 // --- route สำหรับดึงอุณหภูมิล่าสุดจากฐานข้อมูล ---
 app.get('/tmp', (req, res) => {
-  const sql = 'SELECT temperature, humidity, mac_id, recorded_at FROM temperature_log ORDER BY recorded_at DESC LIMIT 1';
+  const sql = 'SELECT temperature, humidity, heat_index, mac_id, recorded_at FROM temperature_log ORDER BY recorded_at DESC LIMIT 1';
   db.query(sql, (err, results) => {
     if (err) {
       console.error('❌ Error querying database:', err);
@@ -72,10 +72,11 @@ app.get('/tmp', (req, res) => {
       return res.status(404).json({ message: 'No temperature data found' });
     }
 
-    const { temperature,humidity, mac_id, recorded_at } = results[0];
+    const { temperature,humidity, heat_index, mac_id, recorded_at } = results[0];
     res.json({
       temperature,
       humidity,
+      heat_index,
       mac_id,
       recorded_at,
       status: getStatus(temperature)
@@ -85,7 +86,7 @@ app.get('/tmp', (req, res) => {
 
 // --- ดึงประวัติอุณหภูมิ 20 รายการล่าสุด ---
 app.get('/history', (req, res) => {
-  const sql = 'SELECT temperature,humidity, mac_id, recorded_at FROM temperature_log ORDER BY recorded_at DESC LIMIT 5';
+  const sql = 'SELECT temperature,humidity, heat_index, mac_id, recorded_at FROM temperature_log ORDER BY recorded_at DESC LIMIT 5';
   db.query(sql, (err, results) => {
     if (err) {
       console.error('❌ Error querying database:', err);
