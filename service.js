@@ -31,7 +31,7 @@ app.get('/', (req, res) => {
 
 const moment = require('moment-timezone'); // แนะนำวางบนสุดของไฟล์
 app.post('/add', (req, res) => {
-  const { temperature, humidity, mac_id } = req.body;
+  const { temperature, humidity,heat_index, mac_id } = req.body;
 
   // ตรวจสอบว่ามีค่า temperature และ humidity
   if (temperature === undefined) {
