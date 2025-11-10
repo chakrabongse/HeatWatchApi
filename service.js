@@ -31,7 +31,7 @@ app.get('/', (req, res) => {
 
 const moment = require('moment-timezone'); // แนะนำวางบนสุดของไฟล์
 app.post('/add', (req, res) => {
-  const { temperature, humidity } = req.body;
+  const { temperature, humidity, Mac } = req.body;
 
   // ตรวจสอบว่ามีค่า temperature และ humidity
   if (temperature === undefined) {
@@ -45,7 +45,7 @@ app.post('/add', (req, res) => {
   const thailandTime = moment().tz('Asia/Bangkok').format('YYYY-MM-DD HH:mm:ss');
   console.log('Bangkok Time:', thailandTime);
 
-  const sql = `INSERT INTO temperature_log (temperature, humidity, recorded_at) VALUES (?, ?, ?)`;
+  const sql = `INSERT INTO temperature_log (temperature, humidity, Mac, recorded_at) VALUES (?, ?, ?)`;
 
   db.query(sql, [temperature, humidity, thailandTime], (err, result) => {
     if (err) {
