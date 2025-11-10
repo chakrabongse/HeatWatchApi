@@ -86,23 +86,23 @@ app.get('/tmp', (req, res) => {
 
 // --- ดึงประวัติอุณหภูมิ 20 รายการล่าสุด ---
 app.get('/history', (req, res) => {
-  const sql = `
-    SELECT t.temperature, t.humidity, t.heat_index, t.mac_id, t.recorded_at
-    FROM (
-      SELECT *,
-             ROW_NUMBER() OVER(PARTITION BY mac_id ORDER BY recorded_at DESC) as rn
-      FROM temperature_log
-    ) t
-    WHERE t.rn <= 5
-    ORDER BY t.mac_id, t.recorded_at DESC
-  `;
-
+  const sql = 'SELECT temperature, humidity, heat_index, mac_id, recorded_at FROM temperature_log ORDER BY recorded_at DESC';
   db.query(sql, (err, results) => {
     if (err) {
       console.error('❌ Error querying database:', err);
       return res.status(500).json({ error: 'Database error' });
     }
-    res.json(results);
+
+    // จัดกลุ่มตาม mac_id และเลือก 5 ล่าสุดต่อ device
+    const grouped = {};
+    results.forEach(record => {
+      if (!grouped[record.mac_id]) grouped[record.mac_id] = [];
+      if (grouped[record.mac_id].length < 5) grouped[record.mac_id].push(record);
+    });
+
+    // แปลงเป็น array สำหรับ frontend
+    const finalResults = Object.values(grouped).flat();
+    res.json(finalResults);
   });
 });
 
