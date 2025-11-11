@@ -1,25 +1,28 @@
 const express = require('express');
 const app = express();
 const cors = require('cors');
-const { Pool } = require('pg');  // ใช้ Pool สำหรับ connection pooling
+const moment = require('moment-timezone');
+const { Pool } = require('pg');
+const dns = require('dns');
+
+// ✅ บังคับ Node.js ให้ใช้ IPv4 ก่อน (แก้ปัญหา ENETUNREACH บน Render)
+dns.setDefaultResultOrder('ipv4first');
+
 const port = 5353;
 
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// --- ตั้งค่าการเชื่อมต่อ PostgreSQL ---
+// --- ตั้งค่าการเชื่อมต่อ PostgreSQL (Supabase) ---
 const pool = new Pool({
-  host: 'db.hdtsvwcrhxzauwwzkawr.supabase.co',  // เฉพาะชื่อ host เท่านั้น
+  host: 'db.hdtsvwcrhxzauwwzkawr.supabase.co',
   user: 'postgres',
-  password: 'Chakrabongse1',   // ใส่รหัสผ่านจริง
+  password: 'Chakrabongse1', // อย่าใส่ในโค้ดจริงถ้า deploy ให้ใช้ ENV variable แทน
   database: 'postgres',
   port: 5432,
-  ssl: { rejectUnauthorized: false },  // สำหรับ Supabase ต้องใช้ SSL
-  family: 4,  // บังคับใช้ IPv4
+  ssl: { rejectUnauthorized: false },
 });
-
-
 
 // --- ตรวจสอบการเชื่อมต่อ ---
 pool.connect()
@@ -31,8 +34,6 @@ app.get('/', (req, res) => {
   res.send('🌡️ Temperature Service is running with PostgreSQL!');
 });
 
-const moment = require('moment-timezone');
-
 // --- เพิ่มข้อมูลใหม่ ---
 app.post('/add', async (req, res) => {
   const { temperature, humidity, heat_index, mac_id } = req.body;
@@ -41,9 +42,10 @@ app.post('/add', async (req, res) => {
   if (humidity === undefined) return res.status(400).json({ error: 'Missing parameter: humidity' });
 
   const thailandTime = moment().tz('Asia/Bangkok').format('YYYY-MM-DD HH:mm:ss');
-
-  const sql = `INSERT INTO sensor_data (temperature, humidity, heat_index, mac_id, recorded_at)
-               VALUES ($1, $2, $3, $4, $5)`;
+  const sql = `
+    INSERT INTO sensor_data (temperature, humidity, heat_index, mac_id, recorded_at)
+    VALUES ($1, $2, $3, $4, $5)
+  `;
 
   try {
     await pool.query(sql, [temperature, humidity, heat_index, mac_id, thailandTime]);
@@ -57,10 +59,12 @@ app.post('/add', async (req, res) => {
 
 // --- ดึงอุณหภูมิล่าสุด ---
 app.get('/tmp', async (req, res) => {
-  const sql = `SELECT temperature, humidity, heat_index, mac_id, recorded_at 
-               FROM sensor_data 
-               ORDER BY recorded_at DESC 
-               LIMIT 1`;
+  const sql = `
+    SELECT temperature, humidity, heat_index, mac_id, recorded_at 
+    FROM sensor_data 
+    ORDER BY recorded_at DESC 
+    LIMIT 1
+  `;
 
   try {
     const { rows } = await pool.query(sql);
@@ -76,9 +80,11 @@ app.get('/tmp', async (req, res) => {
 
 // --- ดึงประวัติอุณหภูมิ ---
 app.get('/history', async (req, res) => {
-  const sql = `SELECT temperature, humidity, heat_index, mac_id, recorded_at 
-               FROM sensor_data 
-               ORDER BY recorded_at DESC`;
+  const sql = `
+    SELECT temperature, humidity, heat_index, mac_id, recorded_at 
+    FROM sensor_data 
+    ORDER BY recorded_at DESC
+  `;
 
   try {
     const { rows } = await pool.query(sql);
