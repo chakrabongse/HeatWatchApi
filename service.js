@@ -9,10 +9,10 @@ app.use(express.json());       // สำหรับอ่าน JSON body
 app.use(express.urlencoded({ extended: true })); // สำหรับอ่าน form data
 // --- ตั้งค่าการเชื่อมต่อฐานข้อมูล ---
 const db = mysql.createConnection({
-  host: 'sql12.freesqldatabase.com',
-  user: 'sql12805960',          // เปลี่ยนตาม user ของคุณ
-  password: 'bMtFEAXFRN',           // ใส่รหัสผ่าน MySQL ของคุณ
-  database: 'sql12805960' // ชื่อฐานข้อมูลที่สร้างไว้
+  host: 'sql.freedb.tech',
+  user: 'freedb_sql12805960',          // เปลี่ยนตาม user ของคุณ
+  password: '?6#bS9g6du9MSzv',           // ใส่รหัสผ่าน MySQL ของคุณ
+  database: 'freedb_sql12805960' // ชื่อฐานข้อมูลที่สร้างไว้
 });
 
 // --- เชื่อมต่อฐานข้อมูล ---
@@ -45,7 +45,7 @@ app.post('/add', (req, res) => {
   const thailandTime = moment().tz('Asia/Bangkok').format('YYYY-MM-DD HH:mm:ss');
   console.log('Bangkok Time:', thailandTime);
 
-  const sql = `INSERT INTO temperature_log (temperature, humidity, heat_index, mac_id, recorded_at) VALUES (?, ?, ?, ?, ?)`;
+  const sql = `INSERT INTO sensor_data (temperature, humidity, heat_index, mac_id, recorded_at) VALUES (?, ?, ?, ?, ?)`;
 
   db.query(sql, [temperature, humidity, heat_index, mac_id, thailandTime], (err, result) => {
     if (err) {
