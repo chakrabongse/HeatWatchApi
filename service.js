@@ -61,7 +61,7 @@ app.post('/add', (req, res) => {
 
 // --- route สำหรับดึงอุณหภูมิล่าสุดจากฐานข้อมูล ---
 app.get('/tmp', (req, res) => {
-  const sql = 'SELECT temperature, humidity, heat_index, mac_id, recorded_at FROM temperature_log ORDER BY recorded_at DESC LIMIT 1';
+  const sql = 'SELECT temperature, humidity, heat_index, mac_id, recorded_at FROM sensor_data ORDER BY recorded_at DESC LIMIT 1';
   db.query(sql, (err, results) => {
     if (err) {
       console.error('❌ Error querying database:', err);
@@ -86,7 +86,7 @@ app.get('/tmp', (req, res) => {
 
 // --- ดึงประวัติอุณหภูมิ 20 รายการล่าสุด ---
 app.get('/history', (req, res) => {
-  const sql = 'SELECT temperature, humidity, heat_index, mac_id, recorded_at FROM temperature_log ORDER BY recorded_at DESC';
+  const sql = 'SELECT temperature, humidity, heat_index, mac_id, recorded_at FROM sensor_data ORDER BY recorded_at DESC';
   db.query(sql, (err, results) => {
     if (err) {
       console.error('❌ Error querying database:', err);
