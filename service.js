@@ -8,7 +8,7 @@ const dns = require('dns');
 // ✅ บังคับ Node.js ให้ใช้ IPv4 ก่อน (แก้ปัญหา ENETUNREACH บน Render)
 dns.setDefaultResultOrder('ipv4first');
 
-const port = 5353;
+const port = 3000;
 
 app.use(cors());
 app.use(express.json());
