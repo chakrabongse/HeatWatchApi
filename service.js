@@ -16,8 +16,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // --- ตั้งค่าการเชื่อมต่อ PostgreSQL (Supabase) ---
 const pool = new Pool({
-  host: 'db.hdtsvwcrhxzauwwzkawr.supabase.co',
-  user: 'postgres',
+  host: 'aws-1-ap-southeast-1.pooler.supabase.com',
+  user: 'postgres.hdtsvwcrhxzauwwzkawr',
   password: 'Chakrabongse1', // อย่าใส่ในโค้ดจริงถ้า deploy ให้ใช้ ENV variable แทน
   database: 'postgres',
   port: 5432,
