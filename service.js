@@ -1,109 +1,97 @@
 const express = require('express');
 const app = express();
 const cors = require('cors');
-const mysql = require('mysql2'); // ใช้ mysql2 ดีกว่าเพราะรองรับ Promise
-const port = 3000;
+const { Pool } = require('pg');  // ใช้ Pool สำหรับ connection pooling
+const port = 5353;
 
 app.use(cors());
-app.use(express.json());       // สำหรับอ่าน JSON body
-app.use(express.urlencoded({ extended: true })); // สำหรับอ่าน form data
-// --- ตั้งค่าการเชื่อมต่อฐานข้อมูล ---
-const db = mysql.createConnection({
-  host: 'sql.freedb.tech',
-  user: 'freedb_sql12805960',          // เปลี่ยนตาม user ของคุณ
-  password: '?6#bS9g6du9MSzv',           // ใส่รหัสผ่าน MySQL ของคุณ
-  database: 'freedb_sql12805960' // ชื่อฐานข้อมูลที่สร้างไว้
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// --- ตั้งค่าการเชื่อมต่อ PostgreSQL ---
+const pool = new Pool({
+  host: 'db.hdtsvwcrhxzauwwzkawr.supabase.co',  // เฉพาะชื่อ host เท่านั้น
+  user: 'postgres',
+  password: 'Chakrabongse1',   // ใส่รหัสผ่านจริง
+  database: 'postgres',
+  port: 5432,
+  ssl: { rejectUnauthorized: false },  // สำหรับ Supabase ต้องใช้ SSL
+  family: 4,  // บังคับใช้ IPv4
 });
 
-// --- เชื่อมต่อฐานข้อมูล ---
-db.connect((err) => {
-  if (err) {
-    console.error('❌ Database connection failed:', err);
-    return;
-  }
-  console.log('✅ Connected to MySQL database');
-});
+
+
+// --- ตรวจสอบการเชื่อมต่อ ---
+pool.connect()
+  .then(() => console.log('✅ Connected to PostgreSQL database'))
+  .catch(err => console.error('❌ Database connection failed:', err));
 
 // --- route หลัก ---
 app.get('/', (req, res) => {
-  res.send('🌡️ Temperature Service is running with Database!');
+  res.send('🌡️ Temperature Service is running with PostgreSQL!');
 });
 
-const moment = require('moment-timezone'); // แนะนำวางบนสุดของไฟล์
-app.post('/add', (req, res) => {
-  const { temperature, humidity,heat_index, mac_id } = req.body;
+const moment = require('moment-timezone');
 
-  // ตรวจสอบว่ามีค่า temperature และ humidity
-  if (temperature === undefined) {
-    return res.status(400).json({ error: 'Missing parameter: temperature' });
-  }
-  if (humidity === undefined) {
-    return res.status(400).json({ error: 'Missing parameter: humidity' });
-  }
+// --- เพิ่มข้อมูลใหม่ ---
+app.post('/add', async (req, res) => {
+  const { temperature, humidity, heat_index, mac_id } = req.body;
 
-  // เวลาประเทศไทยปัจจุบัน
+  if (temperature === undefined) return res.status(400).json({ error: 'Missing parameter: temperature' });
+  if (humidity === undefined) return res.status(400).json({ error: 'Missing parameter: humidity' });
+
   const thailandTime = moment().tz('Asia/Bangkok').format('YYYY-MM-DD HH:mm:ss');
-  console.log('Bangkok Time:', thailandTime);
 
-  const sql = `INSERT INTO sensor_data (temperature, humidity, heat_index, mac_id, recorded_at) VALUES (?, ?, ?, ?, ?)`;
+  const sql = `INSERT INTO sensor_data (temperature, humidity, heat_index, mac_id, recorded_at)
+               VALUES ($1, $2, $3, $4, $5)`;
 
-  db.query(sql, [temperature, humidity, heat_index, mac_id, thailandTime], (err, result) => {
-    if (err) {
-      console.error('❌ Insert error:', err);
-      return res.status(500).json({ error: 'Database insert error' });
-    }
-
-    console.log(`✅ New temperature added: ${temperature}°C, Humidity: ${humidity}% (Recorded in Bangkok Time)`);
+  try {
+    await pool.query(sql, [temperature, humidity, heat_index, mac_id, thailandTime]);
+    console.log(`✅ New temperature added: ${temperature}°C, Humidity: ${humidity}%`);
     res.json({ success: true, message: 'Data saved successfully' });
-  });
+  } catch (err) {
+    console.error('❌ Insert error:', err);
+    res.status(500).json({ error: 'Database insert error' });
+  }
 });
 
+// --- ดึงอุณหภูมิล่าสุด ---
+app.get('/tmp', async (req, res) => {
+  const sql = `SELECT temperature, humidity, heat_index, mac_id, recorded_at 
+               FROM sensor_data 
+               ORDER BY recorded_at DESC 
+               LIMIT 1`;
 
-// --- route สำหรับดึงอุณหภูมิล่าสุดจากฐานข้อมูล ---
-app.get('/tmp', (req, res) => {
-  const sql = 'SELECT temperature, humidity, heat_index, mac_id, recorded_at FROM sensor_data ORDER BY recorded_at DESC LIMIT 1';
-  db.query(sql, (err, results) => {
-    if (err) {
-      console.error('❌ Error querying database:', err);
-      return res.status(500).json({ error: 'Database error' });
-    }
+  try {
+    const { rows } = await pool.query(sql);
+    if (rows.length === 0) return res.status(404).json({ message: 'No temperature data found' });
 
-    if (results.length === 0) {
-      return res.status(404).json({ message: 'No temperature data found' });
-    }
-
-    const { temperature,humidity, heat_index, mac_id, recorded_at } = results[0];
-    res.json({
-      temperature,
-      humidity,
-      heat_index,
-      mac_id,
-      recorded_at,
-      status: getStatus(temperature)
-    });
-  });
+    const { temperature, humidity, heat_index, mac_id, recorded_at } = rows[0];
+    res.json({ temperature, humidity, heat_index, mac_id, recorded_at, status: getStatus(temperature) });
+  } catch (err) {
+    console.error('❌ Error querying database:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
-// --- ดึงประวัติอุณหภูมิ 20 รายการล่าสุด ---
-app.get('/history', (req, res) => {
-  const sql = 'SELECT temperature, humidity, heat_index, mac_id, recorded_at FROM sensor_data ORDER BY recorded_at DESC';
-  db.query(sql, (err, results) => {
-    if (err) {
-      console.error('❌ Error querying database:', err);
-      return res.status(500).json({ error: 'Database error' });
-    }
+// --- ดึงประวัติอุณหภูมิ ---
+app.get('/history', async (req, res) => {
+  const sql = `SELECT temperature, humidity, heat_index, mac_id, recorded_at 
+               FROM sensor_data 
+               ORDER BY recorded_at DESC`;
 
-    // จัดกลุ่มตาม mac_id และเลือก 5 ล่าสุดต่อ device
+  try {
+    const { rows } = await pool.query(sql);
     const grouped = {};
-    results.forEach(record => {
+    rows.forEach(record => {
       if (!grouped[record.mac_id]) grouped[record.mac_id] = [];
       if (grouped[record.mac_id].length < 5) grouped[record.mac_id].push(record);
     });
-
-    // แปลงเป็น array สำหรับ frontend
-    const finalResults = Object.values(grouped).flat();
-    res.json(finalResults);
-  });
+    res.json(Object.values(grouped).flat());
+  } catch (err) {
+    console.error('❌ Error querying database:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // --- ฟังก์ชันแสดงสถานะตามอุณหภูมิ ---
@@ -114,7 +102,7 @@ function getStatus(temp) {
   return 'Hot 🔥';
 }
 
-// --- เริ่มรันเซิร์ฟเวอร์ ---
+// --- เริ่มเซิร์ฟเวอร์ ---
 app.listen(port, () => {
   console.log(`✅ Temperature API running on http://localhost:${port}`);
 });
