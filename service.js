@@ -60,7 +60,6 @@ app.post('/add', async (req, res) => {
 app.get('/daily', async (req, res) => {
   try {
     const { date } = req.query; // ถ้ามี query date=YYYY-MM-DD จะใช้วันนั้นแทน
-
     let targetDate = date;
 
     // ถ้าไม่ส่งวันที่มา → ใช้วันล่าสุดที่มีข้อมูลใน DB
@@ -99,6 +98,32 @@ app.get('/daily', async (req, res) => {
       grouped[device].push(record);
     });
 
+    // ✅ เติมชั่วโมงที่ไม่มีข้อมูลด้วย null
+    const moment = require('moment-timezone');
+    const fullDayHours = Array.from({ length: 24 }, (_, i) => i); // 0 - 23
+
+    Object.keys(grouped).forEach(mac_id => {
+      const existingHours = grouped[mac_id].map(r =>
+        moment(r.recorded_at).tz('Asia/Bangkok').hour()
+      );
+
+      fullDayHours.forEach(h => {
+        if (!existingHours.includes(h)) {
+          grouped[mac_id].push({
+            mac_id,
+            temperature: null,
+            humidity: null,
+            heat_index: null,
+            recorded_at: moment.tz(targetDate, 'Asia/Bangkok').hour(h).minute(0).second(0).toISOString()
+          });
+        }
+      });
+
+      // เรียงข้อมูลตามเวลา
+      grouped[mac_id].sort((a, b) => new Date(a.recorded_at) - new Date(b.recorded_at));
+    });
+
+    // ✅ ส่งข้อมูลกลับ
     res.json({
       date: targetDate,
       total_devices: Object.keys(grouped).length,
