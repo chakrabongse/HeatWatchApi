@@ -56,6 +56,63 @@ app.post('/add', async (req, res) => {
     res.status(500).json({ error: 'Database insert error' });
   }
 });
+// --- ดึงข้อมูลทั้งวันของวันล่าสุด (แยกตาม device) ---
+app.get('/daily', async (req, res) => {
+  try {
+    const { date } = req.query; // ถ้ามี query date=YYYY-MM-DD จะใช้วันนั้นแทน
+
+    let targetDate = date;
+
+    // ถ้าไม่ส่งวันที่มา → ใช้วันล่าสุดที่มีข้อมูลใน DB
+    if (!targetDate) {
+      const latestDayResult = await pool.query(`
+        SELECT DATE(recorded_at AT TIME ZONE 'Asia/Bangkok') AS latest_date
+        FROM sensor_data
+        ORDER BY recorded_at DESC
+        LIMIT 1
+      `);
+
+      if (latestDayResult.rows.length === 0) {
+        return res.status(404).json({ message: 'No temperature data found' });
+      }
+
+      targetDate = latestDayResult.rows[0].latest_date;
+    }
+
+    // ✅ ดึงข้อมูลทั้งหมดของวันนั้น
+    const dataResult = await pool.query(`
+      SELECT temperature, humidity, heat_index, mac_id, recorded_at
+      FROM sensor_data
+      WHERE DATE(recorded_at AT TIME ZONE 'Asia/Bangkok') = $1
+      ORDER BY mac_id, recorded_at ASC
+    `, [targetDate]);
+
+    if (dataResult.rows.length === 0) {
+      return res.status(404).json({ message: `No data found for ${targetDate}` });
+    }
+
+    // ✅ จัดกลุ่มข้อมูลตาม mac_id (device)
+    const grouped = {};
+    dataResult.rows.forEach(record => {
+      const device = record.mac_id || 'unknown_device';
+      if (!grouped[device]) grouped[device] = [];
+      grouped[device].push(record);
+    });
+
+    res.json({
+      date: targetDate,
+      total_devices: Object.keys(grouped).length,
+      devices: grouped
+    });
+
+  } catch (err) {
+    console.error('❌ Error querying daily data:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+
+
 
 // --- ดึงอุณหภูมิล่าสุด ---
 app.get('/tmp', async (req, res) => {
