@@ -159,7 +159,7 @@ app.get('/daily', async (req, res) => {
 // --- ดึงอุณหภูมิล่าสุด ---
 app.get('/tmp', async (req, res) => {
   const sql = `
-    SELECT temperature, humidity, heat_index, mac_id, recorded_at,risk_color 
+    SELECT temperature, humidity, heat_index, mac_id, recorded_at, risk_color 
     FROM sensor_data 
     ORDER BY recorded_at DESC 
     LIMIT 1
@@ -169,8 +169,8 @@ app.get('/tmp', async (req, res) => {
     const { rows } = await pool.query(sql);
     if (rows.length === 0) return res.status(404).json({ message: 'No temperature data found' });
 
-    const { temperature, humidity, heat_index, mac_id, recorded_at } = rows[0];
-    res.json({ temperature, humidity, heat_index, mac_id, recorded_at, status: getStatus(temperature) });
+    const { temperature, humidity, heat_index, mac_id, recorded_at, risk_color } = rows[0];
+    res.json({ temperature, humidity, heat_index, mac_id, recorded_at, risk_color, status: getStatus(temperature) });
   } catch (err) {
     console.error('❌ Error querying database:', err);
     res.status(500).json({ error: 'Database error' });
