@@ -188,7 +188,7 @@ app.get('/tmp', async (req, res) => {
 // --- ดึงประวัติอุณหภูมิ ---
 app.get('/history', async (req, res) => {
   const sql = `
-    SELECT temperature, humidity, heat_index, mac_id, recorded_at 
+    SELECT temperature, humidity, heat_index, mac_id, recorded_at, risk_color
     FROM sensor_data 
     ORDER BY recorded_at DESC
   `;
