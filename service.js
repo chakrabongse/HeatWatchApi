@@ -159,7 +159,7 @@ app.get('/daily', async (req, res) => {
 // --- ดึงอุณหภูมิล่าสุด ---
 app.get('/tmp', async (req, res) => {
   const sql = `
-    SELECT temperature, humidity, heat_index, mac_id, recorded_at 
+    SELECT temperature, humidity, heat_index, mac_id, recorded_at,risk_color 
     FROM sensor_data 
     ORDER BY recorded_at DESC 
     LIMIT 1
