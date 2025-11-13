@@ -36,26 +36,30 @@ app.get('/', (req, res) => {
 
 // --- เพิ่มข้อมูลใหม่ ---
 app.post('/add', async (req, res) => {
-  const { temperature, humidity, heat_index, mac_id } = req.body;
+  const { temperature, humidity, heat_index, mac_id, risk_color } = req.body;
 
+  // ตรวจสอบว่าพารามิเตอร์หลักมีครบไหม
   if (temperature === undefined) return res.status(400).json({ error: 'Missing parameter: temperature' });
   if (humidity === undefined) return res.status(400).json({ error: 'Missing parameter: humidity' });
 
   const thailandTime = moment().tz('Asia/Bangkok').format('YYYY-MM-DD HH:mm:ss');
+
+  // ✅ เพิ่มคอลัมน์ risk_color ด้วย
   const sql = `
-    INSERT INTO sensor_data (temperature, humidity, heat_index, mac_id, recorded_at)
-    VALUES ($1, $2, $3, $4, $5)
+    INSERT INTO sensor_data (temperature, humidity, heat_index, mac_id, recorded_at, risk_color)
+    VALUES ($1, $2, $3, $4, $5, $6)
   `;
 
   try {
-    await pool.query(sql, [temperature, humidity, heat_index, mac_id, thailandTime]);
-    console.log(`✅ New temperature added: ${temperature}°C, Humidity: ${humidity}%`);
+    await pool.query(sql, [temperature, humidity, heat_index, mac_id, thailandTime, risk_color]);
+    console.log(`✅ New data added: ${temperature}°C, H=${humidity}%, Risk=${risk_color}`);
     res.json({ success: true, message: 'Data saved successfully' });
   } catch (err) {
     console.error('❌ Insert error:', err);
     res.status(500).json({ error: 'Database insert error' });
   }
 });
+
 app.get('/daily', async (req, res) => {
   try {
     let { date } = req.query;
@@ -202,7 +206,6 @@ function getStatus(temp) {
   if (temp < 70) return 'Warm ☀️';
   return 'Hot 🔥';
 }
-
 // --- เริ่มเซิร์ฟเวอร์ ---
 app.listen(port, () => {
   console.log(`✅ Temperature API running on http://localhost:${port}`);
