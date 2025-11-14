@@ -59,100 +59,44 @@ app.post('/add', async (req, res) => {
     res.status(500).json({ error: 'Database insert error' });
   }
 });
-
 app.get('/daily', async (req, res) => {
   try {
     let { date } = req.query;
 
-    // ถ้าไม่ส่ง date → ใช้วันปัจจุบัน (ตามเวลาไทย)
-    let targetDate = date || moment().tz('Asia/Bangkok').format('YYYY-MM-DD');
+    const targetDate = date || moment().tz('Asia/Bangkok').format('YYYY-MM-DD');
 
-    console.log(`📅 Requesting data for date: ${targetDate}`);
+    const startOfDay = moment
+      .tz(targetDate, 'Asia/Bangkok')
+      .startOf('day')
+      .format('YYYY-MM-DD HH:mm:ss');
 
-    // ✅ ดึงข้อมูลของวันนั้น
-    const dataResult = await pool.query(`
+    const endOfDay = moment
+      .tz(targetDate, 'Asia/Bangkok')
+      .endOf('day')
+      .format('YYYY-MM-DD HH:mm:ss');
+
+    const dataResult = await pool.query(
+      `
       SELECT temperature, humidity, heat_index, mac_id, recorded_at
       FROM sensor_data
-      WHERE DATE(recorded_at AT TIME ZONE 'Asia/Bangkok') = $1
+      WHERE (recorded_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Bangkok')
+            BETWEEN $1 AND $2
       ORDER BY mac_id, recorded_at ASC
-    `, [targetDate]);
+      `,
+      [startOfDay, endOfDay]
+    );
 
-    // ถ้าไม่มีข้อมูล → ใช้วันล่าสุดใน DB
-    if (dataResult.rows.length === 0) {
-      console.log(`⚠️ No data found for ${targetDate}, fallback to latest available date.`);
-      const latestDayResult = await pool.query(`
-        SELECT DATE(recorded_at AT TIME ZONE 'Asia/Bangkok') AS latest_date
-        FROM sensor_data
-        ORDER BY recorded_at DESC
-        LIMIT 1
-      `);
-
-      if (latestDayResult.rows.length === 0) {
-        return res.status(404).json({ message: 'No temperature data found' });
-      }
-
-      targetDate = latestDayResult.rows[0].latest_date;
-      const retryResult = await pool.query(`
-        SELECT temperature, humidity, heat_index, mac_id, recorded_at
-        FROM sensor_data
-        WHERE DATE(recorded_at AT TIME ZONE 'Asia/Bangkok') = $1
-        ORDER BY mac_id, recorded_at ASC
-      `, [targetDate]);
-
-      dataResult.rows.push(...retryResult.rows);
-    }
-
-    // ✅ จัดกลุ่มตาม mac_id
-    const grouped = {};
-    dataResult.rows.forEach(record => {
-      const device = record.mac_id || 'unknown_device';
-      if (!grouped[device]) grouped[device] = [];
-      grouped[device].push(record);
-    });
-
-    // ✅ เติมชั่วโมงที่ไม่มีข้อมูลด้วย null
-    const fullDayHours = Array.from({ length: 24 }, (_, i) => i); // 0 - 23
-
-    Object.keys(grouped).forEach(mac_id => {
-      const existingHours = grouped[mac_id].map(r =>
-        moment(r.recorded_at).tz('Asia/Bangkok').hour()
-      );
-
-      fullDayHours.forEach(h => {
-        if (!existingHours.includes(h)) {
-          grouped[mac_id].push({
-            mac_id,
-            temperature: null,
-            humidity: null,
-            heat_index: null,
-            recorded_at: moment
-              .tz(targetDate, 'Asia/Bangkok')
-              .hour(h)
-              .minute(0)
-              .second(0)
-              .toISOString(),
-          });
-        }
-      });
-
-      // เรียงข้อมูลตามเวลา
-      grouped[mac_id].sort((a, b) => new Date(a.recorded_at) - new Date(b.recorded_at));
-    });
-
-    // ✅ ส่งข้อมูลกลับ
-    res.json({
+    return res.json({
       date: targetDate,
-      total_devices: Object.keys(grouped).length,
-      devices: grouped,
+      total_devices: new Set(dataResult.rows.map(r => r.mac_id)).size,
+      devices: dataResult.rows
     });
 
   } catch (err) {
-    console.error('❌ Error querying daily data:', err);
+    console.error(err);
     res.status(500).json({ error: 'Database error' });
   }
 });
-
-
 
 
 
